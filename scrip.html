@@ -1,0 +1,178 @@
+document.addEventListener("DOMContentLoaded", () => {
+
+// ===== MODEL =====
+const MODELS = [
+"iphone x","iphone xs","iphone xs max",
+"iphone 11","iphone 11 pro","iphone 11 pro max",
+"iphone 12","iphone 12 pro max",
+"iphone 13","iphone 13 pro max",
+"iphone 14 pro max",
+"iphone 15 pro max",
+"iphone 16 pro max",
+"iphone 17 pro max"
+];
+
+const BASE_PRICE = {
+"iphone x":2500000,
+"iphone xs":3000000,
+"iphone xs max":4000000,
+"iphone 11":5200000,
+"iphone 11 pro":6000000,
+"iphone 11 pro max":6000000,
+"iphone 12":7300000,
+"iphone 12 pro max":9000000,
+"iphone 13":10000000,
+"iphone 13 pro max":12000000,
+"iphone 14 pro max":15000000,
+"iphone 15 pro max":30000000,
+"iphone 16 pro max":31000000,
+"iphone 17 pro max":37000000
+};
+
+const STORAGE_PRICE = {
+"64":0,"128":500000,"256":1000000,"512":2000000,"1tb":3000000
+};
+
+const SCREEN_PRICE = {
+"iphone 11 pro max":2000000,
+"iphone 13 pro max":2500000,
+"iphone 14 pro max":3000000,
+"iphone 15 pro max":4000000,
+"iphone 16 pro max":4500000,
+"iphone 17 pro max":5000000
+};
+
+// load model
+const modelSelect = document.getElementById("model");
+MODELS.forEach(m=>{
+let opt=document.createElement("option");
+opt.value=m;
+opt.textContent=m.toUpperCase();
+modelSelect.appendChild(opt);
+});
+
+// ===== TÍNH GIÁ =====
+function calculate(){
+
+let model=modelSelect.value;
+let storage=document.getElementById("storage").value;
+let battery=parseInt(document.getElementById("battery").value);
+let damage=document.getElementById("damage").value;
+let screen=document.getElementById("screen").value;
+
+let base=BASE_PRICE[model]||0;
+base+=STORAGE_PRICE[storage]||0;
+
+let final=base;
+
+// trầy
+if(damage==="nhẹ") final-=300000;
+if(damage==="viền") final-=600000;
+if(damage==="nặng") final-=1000000;
+
+// pin
+if(battery<80) final-=700000;
+else if(battery<85) final-=300000;
+
+// màn
+let screenPrice=SCREEN_PRICE[model]||1500000;
+let scale= base>30000000?1.4: base>20000000?1.2:1;
+
+if(screen==="bể") final-=screenPrice*scale;
+if(screen==="oled") final-=screenPrice*0.65*scale;
+
+if(final<0) final=0;
+
+return Math.round(final);
+}
+
+// ===== HIỆN GIÁ =====
+window.showPrice=function(){
+
+let zalo=document.getElementById("zalo").value.trim();
+
+let missing=[];
+if(!modelSelect.value) missing.push("dòng máy");
+if(!storage.value) missing.push("dung lượng");
+if(!battery.value) missing.push("pin");
+if(!damage.value) missing.push("ngoại hình");
+if(!screen.value) missing.push("màn");
+
+if(missing.length){
+document.getElementById("result").innerHTML=
+`❌ Thiếu: ${missing.join(", ")}`;
+return;
+}
+
+if(!zalo){
+document.getElementById("result").innerHTML=
+`⚠️ Nhập Zalo để xem giá`;
+return;
+}
+
+if(!/^0[0-9]{9}$/.test(zalo)){
+document.getElementById("result").innerHTML=
+`⚠️ Zalo không hợp lệ`;
+return;
+}
+
+let price=calculate();
+
+document.getElementById("result").innerHTML=`
+<div class="result">
+<div class="price">💰 ${price.toLocaleString()} VNĐ</div>
+<p>👉 Giá có thể thay đổi sau kiểm tra</p>
+</div>`;
+
+// ===== LƯU KHÁCH =====
+let customers=JSON.parse(localStorage.getItem("customers")||"[]");
+
+customers.push({
+stt:customers.length+1,
+time:new Date().toLocaleString(),
+model:modelSelect.value,
+storage:storage.value,
+battery:battery.value,
+damage:damage.value,
+screen:screen.value,
+zalo:zalo
+});
+
+localStorage.setItem("customers",JSON.stringify(customers));
+
+};
+
+// ===== ADMIN =====
+document.getElementById("adminBtn").onclick=function(){
+
+let user=prompt("Tài khoản:");
+let pass=prompt("Mật khẩu:");
+
+if(user==="admin"&&pass==="123456"){
+downloadCSV();
+}else{
+alert("Sai tài khoản");
+}
+};
+
+// ===== EXPORT CSV =====
+function downloadCSV(){
+
+let customers=JSON.parse(localStorage.getItem("customers")||"[]");
+
+let csv="STT,Time,Model,Storage,Pin,Ngoại hình,Màn,Zalo\n";
+
+customers.forEach(c=>{
+csv+=`${c.stt},${c.time},${c.model},${c.storage},${c.battery},${c.damage},${c.screen},${c.zalo}\n`;
+});
+
+let blob=new Blob([csv],{type:"text/csv"});
+let url=URL.createObjectURL(blob);
+
+let a=document.createElement("a");
+a.href=url;
+a.download="khach.csv";
+a.click();
+}
+
+});
